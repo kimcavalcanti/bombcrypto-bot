@@ -6,6 +6,7 @@ import mss
 import pyautogui
 import time
 import sys
+import imutils
 
 import yaml
 
@@ -74,19 +75,19 @@ login_attempts = 0
 
 
 
-go_work_img = cv2.imread('targets/go-work.png')
-commom_img = cv2.imread('targets/commom-text.png')
-arrow_img = cv2.imread('targets/go-back-arrow.png')
-hero_img = cv2.imread('targets/hero-icon.png')
-x_button_img = cv2.imread('targets/x.png')
-teasureHunt_icon_img = cv2.imread('targets/treasure-hunt-icon.png')
-ok_btn_img = cv2.imread('targets/ok.png')
-connect_wallet_btn_img = cv2.imread('targets/connect-wallet.png')
-select_wallet_hover_img = cv2.imread('targets/select-wallet-1-hover.png')
-select_metamask_no_hover_img = cv2.imread('targets/select-wallet-1-no-hover.png')
-sign_btn_img = cv2.imread('targets/select-wallet-2.png')
-new_map_btn_img = cv2.imread('targets/new-map.png')
-green_bar = cv2.imread('targets/green-bar.png')
+go_work_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/go-work.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+commom_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/commom-text.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+arrow_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/go-back-arrow.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+hero_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/hero-icon.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+x_button_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/x.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+teasureHunt_icon_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/treasure-hunt-icon.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+ok_btn_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/ok.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+connect_wallet_btn_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/connect-wallet.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+select_wallet_hover_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/select-wallet-1-hover.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+select_metamask_no_hover_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/select-wallet-1-no-hover.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+sign_btn_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/select-wallet-2.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+new_map_btn_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/new-map.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+green_bar = ccv2.Canny(cv2.cvtColor(v2.imread('targets/green-bar.png'), cv2.COLOR_BGR2GRAY), 50, 200)
 
 def dot():
     sys.stdout.write(".")
@@ -124,10 +125,23 @@ def printSreen():
         # Grab the data
         #sct_img = np.array(sct.grab(monitor))
         sct_img = np.array(sct.grab(sct.monitors[0]))
-        return sct_img[:,:,:3]
+        
+        return cv2.cvtColor(sct_img, cv2.COLOR_BGR2GRAY)
 
 def positions(target, trashhold=ct['default']):
     img = printSreen()
+    (tH, tW) = target.shape[:2]
+    
+    # loop over the scales of the image
+    for scale in np.linspace(0.2, 1.0, 20)[::-1]:
+        # resize the image according to the scale, and keep track
+		# of the ratio of the resizing
+        resized = imutils.resize(img, width = int(img.shape[1] * scale))
+	    r = img.shape[1] / float(resized.shape[1])
+
+        if resized.shape[0] < tH or resized.shape[1] < tW:
+		    break
+  
     result = cv2.matchTemplate(img,target,cv2.TM_CCOEFF_NORMED)
     w = target.shape[1]
     h = target.shape[0]
