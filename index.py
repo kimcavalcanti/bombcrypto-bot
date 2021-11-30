@@ -87,7 +87,7 @@ select_wallet_hover_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/select-wall
 select_metamask_no_hover_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/select-wallet-1-no-hover.png'), cv2.COLOR_BGR2GRAY), 50, 200)
 sign_btn_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/select-wallet-2.png'), cv2.COLOR_BGR2GRAY), 50, 200)
 new_map_btn_img = cv2.Canny(cv2.cvtColor(cv2.imread('targets/new-map.png'), cv2.COLOR_BGR2GRAY), 50, 200)
-green_bar = ccv2.Canny(cv2.cvtColor(v2.imread('targets/green-bar.png'), cv2.COLOR_BGR2GRAY), 50, 200)
+green_bar = cv2.Canny(cv2.cvtColor(cv2.imread('targets/green-bar.png'), cv2.COLOR_BGR2GRAY), 50, 200)
 
 def dot():
     sys.stdout.write(".")
@@ -95,13 +95,14 @@ def dot():
 
 def clickBtn(img,name=None, timeout=3, trashhold = ct['default']):
     dot()
+    global targetName
     if not name is None:
         pass
         # print('waiting for "{}" button, timeout of {}s'.format(name, timeout))
     start = time.time()
     clicked = False
     while(not clicked):
-        matches = positions(img, trashhold=trashhold)
+        matches = positions(img, name, trashhold=trashhold)
         if(len(matches)==0):
             hast_timed_out = time.time()-start > timeout
             if(hast_timed_out):
@@ -128,31 +129,57 @@ def printSreen():
         
         return cv2.cvtColor(sct_img, cv2.COLOR_BGR2GRAY)
 
-def positions(target, trashhold=ct['default']):
+def positions(target, targetName=None, trashhold=ct['default']):
     img = printSreen()
-    (tH, tW) = target.shape[:2]
+    list_kp1 = []
+    list_kp2 = []
     
-    # loop over the scales of the image
-    for scale in np.linspace(0.2, 1.0, 20)[::-1]:
-        # resize the image according to the scale, and keep track
-		# of the ratio of the resizing
-        resized = imutils.resize(img, width = int(img.shape[1] * scale))
-	    r = img.shape[1] / float(resized.shape[1])
+    # ORB Detector
+    orb = cv2.ORB_create()
+    kp1, des1 = orb.detectAndCompute(target, None)
+    kp2, des2 = orb.detectAndCompute(img, None)
+    # Brute Force Matching
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = bf.match(des1, des2)
+    matches = sorted(matches, key = lambda x:x.distance)
+    
+    
+    for mat in matches:
+        if mat.distance >= 90.0:
+            print(mat.distance)
+        # Get the matching keypoints for each of the images
+            img1_idx = mat.queryIdx
+            img2_idx = mat.trainIdx
 
-        if resized.shape[0] < tH or resized.shape[1] < tW:
-		    break
-  
-    result = cv2.matchTemplate(img,target,cv2.TM_CCOEFF_NORMED)
+            # x - columns
+            # y - rows
+            # Get the coordinates
+            (x1, y1) = kp1[img1_idx].pt
+            (x2, y2) = kp2[img2_idx].pt
+
+            # Append to each list
+            list_kp1.append((x1, y1))
+            list_kp2.append((x2, y2))
+            
+    yloc, xloc = [list_kp1, list_kp2]
+    #drawing the matches
+    #matching_result = cv2.drawMatches(target, kp1, img, kp2, matches[:50], None, flags=2)
+    #cv2.imshow('image', matching_result)
+    ##cv2.waitKey(0)
+    #cv2.destroyAllWindows()
+    # loop over the scales of the image
+    
     w = target.shape[1]
     h = target.shape[0]
 
-    yloc, xloc = np.where(result >= trashhold)
+    #print(len(result))
 
 
     rectangles = []
     for (x, y) in zip(xloc, yloc):
-        rectangles.append([int(x), int(y), int(w), int(h)])
-        rectangles.append([int(x), int(y), int(w), int(h)])
+        print(x, y)
+        rectangles.append([int(x[0]), int(y[0]), int(w), int(h)])
+        rectangles.append([int(x[1]), int(y[1]), int(w), int(h)])
 
     rectangles, weights = cv2.groupRectangles(rectangles, 1, 0.2)
     return rectangles
@@ -355,6 +382,13 @@ def main():
 
     while True:
         now = time.time()
+        
+        if now - last["login"] > t['check_for_login'] * 60:
+            sys.stdout.write("\nChecking if game has disconnected.")
+            sys.stdout.flush()
+            last["login"] = now
+            login()
+            sys.stdout.write("\n")
 
         if now - last["heroes"] > t['send_heroes_for_work'] * 60:
             last["heroes"] = now
@@ -362,12 +396,7 @@ def main():
             refreshHeroes()
             sys.stdout.write("\n")
 
-        if now - last["login"] > t['check_for_login'] * 60:
-            sys.stdout.write("\nChecking if game has disconnected.")
-            sys.stdout.flush()
-            last["login"] = now
-            login()
-            sys.stdout.write("\n")
+        
 
         if now - last["new_map"] > t['check_for_new_map_button']:
             last["new_map"] = now
